@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>牛尾环 九轴标注台</title>
+<style>
+  :root{
+    --bg:#0e1116;--panel:#161b23;--panel2:#1c232d;--line:#2a3441;
+    --ink:#e7ecf3;--dim:#93a0b4;--faint:#5c6b80;
+    --acc:#ff7a7a;--acc2:#7ee0a0;--acc3:#79b6ff;
+    --accent:#4da3ff;--warn:#ffb454;--bad:#ff6b6b;--ok:#6bd18f;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    --vw:380px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;overflow:hidden}
+  button,select,input{font-family:inherit;font-size:12px}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer}
+  button:hover{border-color:var(--faint)} button:active{transform:translateY(1px)}
+  button.pri{background:#1d3a5c;border-color:#2f5c8a} button.pri:hover{border-color:#4da3ff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  select{background:#0c1017;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:3px 5px}
+  input[type=text],input[type=number]{background:#0c1017;border:1px solid var(--line);color:var(--ink);border-radius:5px;padding:4px 6px}
+  input:focus,button:focus-visible,select:focus{outline:2px solid #3a6ea5;outline-offset:1px}
+  .app{display:grid;grid-template-rows:auto 1fr auto;height:100%}
+  .bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .bar .title{font-weight:600;letter-spacing:.3px;margin-right:6px}
+  .bar .sp{flex:1}
+  .tag{font-family:var(--mono);font-size:11px;color:var(--dim);background:#0c1017;border:1px solid var(--line);border-radius:5px;padding:3px 7px}
+  .tag b{color:var(--ink);font-weight:600}
+  .fld{display:flex;align-items:center;gap:4px} .fld .k{color:var(--faint);font-size:11px}
+  .mid{display:grid;grid-template-columns:1fr 6px var(--vw);min-height:0}
+  .plot{position:relative;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
+  .plothdr{display:flex;align-items:center;gap:8px;padding:4px 10px;color:var(--dim);font-size:11px;border-bottom:1px solid var(--line)}
+  .plothdr .sp{flex:1}
+  .canvwrap{position:relative;flex:1;min-height:0} canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .scroll{height:14px;background:var(--panel);border-top:1px solid var(--line);position:relative;cursor:pointer}
+  .thumb{position:absolute;top:2px;height:10px;background:#33526f;border:1px solid #47709a;border-radius:5px;min-width:16px}
+  .mini{height:34px;background:var(--panel);border-top:1px solid var(--line);position:relative;cursor:pointer}
+  .mini canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .splitter{background:var(--line);cursor:col-resize} .splitter:hover{background:#3a6ea5}
+  .vpane{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .vwrap{background:#000;position:relative;flex:0 0 auto}
+  video{display:block;width:100%;max-height:42vh;background:#000}
+  .vempty{display:flex;align-items:center;justify-content:center;height:200px;color:var(--faint);text-align:center;font-size:12px;padding:16px}
+  .vctl{padding:8px 10px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+  .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap} .row .lbl{color:var(--dim);min-width:52px}
+  .clocks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .clockbox{background:#0c1017;border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+  .clockbox .k{color:var(--faint);font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+  .clockbox .v{font-family:var(--mono);font-size:12px;margin-top:2px}
+  .hint{color:var(--faint);font-size:11px;line-height:1.55}
+  .bot{display:grid;grid-template-columns:320px 1fr;border-top:1px solid var(--line);background:var(--panel);height:210px}
+  .palette{border-right:1px solid var(--line);padding:8px;overflow:auto}
+  .palette h4,.evwrap h4{margin:2px 0 8px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .lab{display:flex;align-items:center;gap:6px;padding:4px 5px;border:1px solid transparent;border-radius:6px;margin-bottom:3px;cursor:pointer}
+  .lab:hover{background:var(--panel2)} .lab.sel{border-color:#3a6ea5;background:#132436}
+  .sw{width:14px;height:14px;border-radius:4px;flex:0 0 auto;border:1px solid rgba(255,255,255,.2)}
+  .lab .nm{flex:1} .lab .kk{font-family:var(--mono);font-size:11px;color:var(--dim);background:#0c1017;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .lab .tp{font-size:10px;color:var(--faint)}
+  .evwrap{display:flex;flex-direction:column;min-height:0}
+  .evtop{display:flex;align-items:center;gap:8px;padding:8px 10px 4px} .evtop .sp{flex:1}
+  .evtable{overflow:auto;flex:1;padding:0 6px 6px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--faint);font-weight:500;position:sticky;top:0;background:var(--panel)}
+  tr.selrow{background:#132436}
+  td .mono,.mono{font-family:var(--mono)} td .del{color:var(--bad);cursor:pointer}
+  td select{padding:1px 3px;font-size:11px}
+  .pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px}
+  .empty{color:var(--faint);padding:14px;text-align:center}
+  .warnbar{color:var(--warn);font-size:11px}
+  .kbd{font-family:var(--mono);background:#0c1017;border:1px solid var(--line);border-radius:4px;padding:0 5px}
+  .filein{display:none}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:760px;width:92%;max-height:86vh;overflow:auto;padding:16px}
+  .modal h3{margin:0 0 10px}
+  .gval{color:var(--ok)} .gbad{color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <span class="title">牛尾环 · 九轴标注台</span>
+    <button class="pri" id="btnJson">打开九轴 JSON</button>
+    <button class="pri" id="btnVideo">打开视频 MP4</button>
+    <input type="file" id="fileJson" class="filein" accept=".json,application/json">
+    <input type="file" id="fileVideo" class="filein" accept="video/mp4,video/*">
+    <span class="fld"><span class="k">标注者</span><input type="text" id="annot" placeholder="姓名/工号" style="width:92px"></span>
+    <span class="fld"><span class="k">协议版本</span><input type="text" id="proto" value="v1" style="width:48px"></span>
+    <span class="fld"><span class="k">加速度 raw/</span><select id="accScale"><option value="4096">4096(README)</option><option value="8192">8192</option></select><span class="tag" id="gTag">静止合加速度 —</span></span>
+    <span class="sp"></span>
+    <button id="btnCompare">对比两份标注(IRR)</button>
+    <button id="btnLoadProj">载入工程</button>
+    <button id="btnSaveProj">保存工程</button>
+    <input type="file" id="fileProj" class="filein" accept=".json">
+    <button id="btnCsv">导出 CSV</button>
+    <button id="btnBoris" title="聚合事件CSV(BORIS风格列)，供下游读取，不保证能直接导回BORIS">导出聚合CSV</button>
+  </div>
+
+  <div class="mid">
+    <!-- 主区：九轴曲线 + 泳道 -->
+    <div class="plot">
+      <div class="plothdr">
+        <span id="tagData">未加载数据</span>
+        <span class="sp"></span>
+        <span class="warnbar" id="warnbar"></span>
+        <label class="k" style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="yView" checked style="margin:0">Y自适应</label>
+        <button id="btnPrevAct" title="上一活动段 (P)" style="padding:2px 6px">◀活动</button>
+        <button id="btnNextAct" title="下一活动段 (N)" style="padding:2px 6px">活动▶</button>
+        <span class="tag" id="tagView">—</span>
+      </div>
+      <div class="canvwrap" id="cwrap"><canvas id="base"></canvas><canvas id="over"></canvas></div>
+      <div class="mini" id="miniwrap"><canvas id="mini"></canvas></div>
+      <div class="scroll" id="scroll"><div class="thumb" id="thumb"></div></div>
+    </div>
+
+    <div class="splitter" id="splitter"></div>
+
+    <!-- 辅助：视频 -->
+    <div class="vpane">
+      <div class="vwrap" id="vwrap">
+        <div class="vempty" id="vempty">辅助视频<br><span style="color:var(--faint)">打开与该段九轴同一时间的 MP4</span></div>
+        <video id="video" playsinline style="display:none"></video>
+      </div>
+      <div class="vctl">
+        <div class="row">
+          <button id="btnPlay" disabled>▶ 播放</button>
+          <button id="btnBack" disabled>⟨ 帧</button>
+          <button id="btnFwd" disabled>帧 ⟩</button>
+          <select id="rate"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select>
+          <span class="k" style="color:var(--faint)">帧率</span><input type="number" id="fps" value="25" min="1" max="120" style="width:44px" title="监控多为25(PAL)或15，按你的视频真实帧率填">
+        </div>
+        <div class="clocks">
+          <div class="clockbox"><div class="k">视频墙钟 北京</div><div class="v" id="vWall">—</div></div>
+          <div class="clockbox"><div class="k">播放头九轴墙钟 北京</div><div class="v" id="iWall">—</div></div>
+        </div>
+        <div class="row"><span class="lbl">对齐</span>
+          <button id="btnPin" disabled title="把当前视频帧钉到当前播放头">钉住 帧=播放头</button>
+          <button id="btnAuto" disabled title="按视频文件名时间对齐">按文件名</button>
+        </div>
+        <div class="row"><span class="lbl">微调秒</span>
+          <button data-off="-10" class="offbtn">−10</button><button data-off="-1" class="offbtn">−1</button>
+          <button data-off="-0.1" class="offbtn">−0.1</button><button data-off="0.1" class="offbtn">+0.1</button>
+          <button data-off="1" class="offbtn">+1</button><button data-off="10" class="offbtn">+10</button>
+        </div>
+        <div class="row"><span class="lbl">角上时间</span>
+          <input type="text" id="cornerT" placeholder="HH:MM:SS.mmm" style="width:130px">
+          <button id="btnSetCorner" disabled>设为当前帧</button>
+        </div>
+        <div class="hint">九轴是主体，视频只做参照。对齐三选一：文件名带时间点按文件名；暂停某帧把角上北京时间填进去点设为当前帧；或视频和曲线各找同一动作停到那儿点钉住。对齐法与偏移随导出记入元数据。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bot">
+    <div class="palette">
+      <h4>标签 · 选中后在曲线上拖=框区间</h4>
+      <div id="labList"></div>
+      <div class="row" style="margin-top:8px"><button id="btnAddLab">＋ 新标签</button><button id="btnEditLab">编辑选中</button><button id="btnDefs">标注范围</button></div>
+      <div class="row" style="margin-top:8px"><span class="k" style="color:var(--faint)">新事件默认</span>
+        <select id="defEvi" title="判据来源"><option value="both">两者皆可</option><option value="video">仅视频可辨</option><option value="curve">仅曲线可辨</option></select>
+        <select id="defConf" title="置信度"><option value="high">高</option><option value="mid">中</option><option value="low">低</option></select>
+      </div>
+      <div class="hint" style="margin-top:8px">
+        曲线上拖=按选中标签框区间，单击曲线=跳播放头。下方泳道每标签一行，事件拖左右边微调起止、拖中间整体挪、单击选中、<span class="kbd">Del</span> 删。点事件(如敲击)用快捷键或在其泳道单击落点。也可键盘：按标签快捷键一次记开始再按记结束，<span class="kbd">Esc</span> 取消。
+      </div>
+    </div>
+    <div class="evwrap">
+      <div class="evtop"><h4 style="margin:0">标注事件</h4><span class="sp"></span><span class="tag" id="tagCount">0 条</span><button id="btnClearEv">清空</button></div>
+      <div class="evtable" id="evtable"><div class="empty">还没有标注。选中标签后在曲线上拖，或在下方泳道里拖。</div></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+"use strict";
+const TZ=8*3600000;
+const S={data:null,video:null,videoName:"",videoStartWall:null,alignMethod:"",play:{T:0},view:{t0:0,t1:1},labels:[],selLabel:0,events:[],selEvent:null,pending:null,seq:1,drag:null,tagName:"",yView:true,fps:25,undo:[]};
+const PANELS=[
+  {name:"加速度 X",unit:"m/s²",ci:0,col:"#e0605f",grp:"acc"},
+  {name:"加速度 Y",unit:"m/s²",ci:1,col:"#38b06a",grp:"acc"},
+  {name:"加速度 Z",unit:"m/s²",ci:2,col:"#4a86e8",grp:"acc"},
+  {name:"角速度 X",unit:"deg/s",ci:3,col:"#c67a21",grp:"gyr"},
+  {name:"角速度 Y",unit:"deg/s",ci:4,col:"#2aa99a",grp:"gyr"},
+  {name:"角速度 Z",unit:"deg/s",ci:5,col:"#9161d6",grp:"gyr"},
+  {name:"磁场 X",unit:"Gauss",ci:6,col:"#cf5a7e",grp:"mag"},
+  {name:"磁场 Y",unit:"Gauss",ci:7,col:"#8a9a3f",grp:"mag"},
+  {name:"磁场 Z",unit:"Gauss",ci:8,col:"#4a80c0",grp:"mag"},
+  {name:"温度",unit:"°C",kind:"temp",col:"#d9822b",grp:"temp"},
+  {name:"运动",unit:"次/分",kind:"motion",col:"#9aa4b6",grp:"motion"},
+];
+const DEFAULT_LABELS=[
+  {name:"休息",en:"resting",key:"1",color:"#9aa0b4",type:"interval",cat:"状态",minDur:10,overlap:false,def:"不活动，站立不动或卧地，无位移。信号近静止(可能含反刍，视频难分则并入)。起点:停止一切活动并静止。终点:任一活动开始。最短约10秒。"},
+  {name:"行走",en:"walking",key:"2",color:"#79b6ff",type:"interval",cat:"状态",minDur:2,overlap:false,def:"向前移动连续迈步。抬头且随每步起落有节律点头，信号呈步频周期。起点:一段位移的第一步。终点:停止迈步静止超过约2秒。与休息互斥，最短约2秒。"},
+  {name:"爬跨",en:"active mount",key:"3",color:"#c56bff",type:"interval",cat:"事件",minDur:1,overlap:true,def:"本牛前躯抬起爬到另一头牛臀部(主动爬跨)，短促高强度，信号为大幅瞬时冲击。单次约数秒(均值约4秒)。窗口内多次提示发情。起点:前躯离地上跨。终点:下跨前躯回地。事件，可与状态并存。"},
+  {name:"抬尾",en:"tail up",key:"4",color:"#ff6b6b",type:"interval",cat:"事件",minDur:0.5,overlap:true,def:"尾根抬离臀部或会阴，常先于排泄或见于发情不适。阈值按你们曲线标定，例如尾根较静息抬起超过30度并保持超过X秒记起点，回落到15度以下记终点。事件，可重叠，最短约0.5秒。"},
+  {name:"撒尿",en:"urination",key:"5",color:"#7ee0a0",type:"interval",cat:"事件",minDur:2,overlap:true,def:"排尿姿态与尿流，常伴抬尾和轻微弓背。起点:尿流开始。终点:尿流结束。事件，可与抬尾重叠，最短约2秒。"},
+  {name:"起卧",en:"posture transition",key:"6",color:"#ffd93d",type:"interval",cat:"事件",minDur:0.5,overlap:true,def:"卧下或起身的动作过程，短促的整体姿态翻转，信号为大幅朝向与加速度摆动。起点:下卧或起身动作开始。终点:在新姿态稳定。事件，短，最短约0.5秒。"},
+  {name:"产犊",en:"calving",key:"7",color:"#ff9f43",type:"interval",cat:"事件",minDur:5,overlap:true,def:"分娩过程(羊膜囊可见、努责、胎儿排出等)，为一长事件可含子事件。用一整段区间覆盖全过程。"},
+  {name:"敲击",en:"sync anchor",key:"0",color:"#ffffff",type:"point",cat:"锚点",minDur:0,overlap:true,def:"用于视频与九轴对齐的人工敲击，加速度上一个尖峰。在敲击那一帧落一个点。"},
+];
+S.labels=DEFAULT_LABELS.map(x=>Object.assign({},x));
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const pad=(n,w=2)=>String(n).padStart(w,"0");
+function fmtWall(ms){ if(ms==null||!isFinite(ms))return "—"; const d=new Date(ms+TZ); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate())+" "+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+pad(d.getUTCSeconds())+"."+pad(d.getUTCMilliseconds(),3); }
+function beijingEpoch(y,mo0,d,h,mi,s,ms=0){ return Date.UTC(y,mo0,d,h,mi,s,ms)-TZ; }
+function fmtRel(ms){ if(ms==null)return "—"; ms=Math.max(0,ms); const s=Math.floor(ms/1000),mm=Math.floor(s/60),ss=s%60,mmm=Math.floor(ms%1000),hh=Math.floor(mm/60); return pad(hh)+":"+pad(mm%60)+":"+pad(ss)+"."+pad(mmm,3); }
+function fmtDur(ms){ if(ms==null)return "—"; const s=ms/1000; if(s<60)return s.toFixed(2)+"s"; const m=Math.floor(s/60); return m+"m"+pad(Math.round(s%60))+"s"; }
+function lb(arr,x,lo=0,hi=arr.length){ while(lo<hi){const m=(lo+hi)>>1; if(arr[m]<x)lo=m+1;else hi=m;} return lo; }
+function b64bytes(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u; }
+function hex2rgba(h,a){ h=(h||"#888").replace("#",""); if(h.length===3)h=h.split("").map(c=>c+c).join(""); const n=parseInt(h,16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function stdOf(a){ let m=0; for(const x of a)m+=x; m/=a.length; let s=0; for(const x of a){const d=x-m;s+=d*d;} return Math.sqrt(s/a.length); }
+
+/* 解析 */
+function decodeBuckets(u8,unsigned){ const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength); const n=Math.floor(u8.length/2); const v=new Float32Array(n); for(let i=0;i<n;i++)v[i]=unsigned?dv.getUint16(i*2,true):dv.getInt16(i*2,true); return v; }
+function bucketTimes(n,tspan){ const t=new Float64Array(n); if(n<=1){t[0]=0;return t;} const step=tspan/n; for(let i=0;i<n;i++)t[i]=(i+0.5)*step; return t; }
+function parseMotionJson(obj,accScale){
+  const version=parseInt(obj.version,10); if(!(version>=0))throw new Error("version 无法解析为整数");
+  if(!obj.imu)throw new Error("缺少 imu 字段"); if(obj.create_time==null)throw new Error("缺少 create_time");
+  const u8=b64bytes(obj.imu),FRAME=version>=2?22:(version===1?20:18);
+  if(u8.length%FRAME!==0)throw new Error("imu 字节数 "+u8.length+" 不能被帧长 "+FRAME+" 整除");
+  const N=u8.length/FRAME,dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+  const relT=new Float64Array(N),ch=Array.from({length:9},()=>new Float32Array(N));
+  const ACC=1/accScale*9.80665,GYR=1/32,MAG=1/1000; let ts0=null;
+  for(let f=0;f<N;f++){ const o=f*FRAME; let base;
+    if(version>=2){ const a=dv.getUint32(o,true); if(ts0===null)ts0=a; relT[f]=a-ts0; base=o+4; }
+    else if(version===1){ const d=dv.getUint16(o,true); relT[f]=f===0?0:relT[f-1]+d; base=o+2; }
+    else { relT[f]=f*20; base=o; }
+    for(let c=0;c<9;c++){ const raw=dv.getInt16(base+c*2,true); ch[c][f]=c<3?raw*ACC:(c<6?raw*GYR:raw*MAG); } }
+  const gaps=new Set(); let dsum=0; for(let i=1;i<N;i++)dsum+=relT[i]-relT[i-1]; const med=N>1?dsum/(N-1):20,gapMs=Math.max(100,med*4);
+  let gapCount=0,maxGap=0; for(let i=1;i<N;i++){ const d=relT[i]-relT[i-1]; if(d>maxGap)maxGap=d; if(d>gapMs){gaps.add(i);gapCount++;} }
+  const tspan=N?relT[N-1]:0; let temp=null,motion=null;
+  if(obj.temperature){ const v=decodeBuckets(b64bytes(obj.temperature),false); for(let i=0;i<v.length;i++)v[i]/=100; temp={v,t:bucketTimes(v.length,tspan)}; }
+  if(obj.motion){ const v=decodeBuckets(b64bytes(obj.motion),true); motion={v,t:bucketTimes(v.length,tspan)}; }
+  let staticNote=""; if(motion){ let mz=true; for(const x of motion.v)if(x!==0){mz=false;break;} if(mz&&stdOf(ch[0])+stdOf(ch[1])+stdOf(ch[2])<0.4)staticNote="此段疑似静止态(运动计数全0、加速度几乎不动)，标不出抬尾撒尿等动作。"; }
+  // 活动度概览:每1秒|a|的标准差(m/s²)
+  const binMs=1000,nb=Math.max(1,Math.ceil(tspan/binMs)),asum=new Float64Array(nb),asq=new Float64Array(nb),acnt=new Float64Array(nb);
+  for(let f=0;f<N;f++){ const g=Math.hypot(ch[0][f],ch[1][f],ch[2][f]),b=Math.min(nb-1,Math.floor(relT[f]/binMs)); asum[b]+=g;asq[b]+=g*g;acnt[b]++; }
+  const act=new Float32Array(nb); let actMax=0; for(let b=0;b<nb;b++){ if(acnt[b]>1){const m=asum[b]/acnt[b],v=Math.max(0,asq[b]/acnt[b]-m*m);act[b]=Math.sqrt(v);} if(act[b]>actMax)actMax=act[b]; }
+  return {relT,ch,temp,motion,tspan,createTime:Number(obj.create_time),gaps,version,device:obj.device||"",N,med,gapCount,maxGap,staticNote,accScale,act,actMax,actBinMs:binMs};
+}
+function restingG(){ if(!S.data)return null; const d=S.data,act=d.act,bin=d.actBinMs,nb=act.length;
+  const sorted=Float32Array.from(act).sort(); const q10=sorted[Math.floor(nb*0.1)]||sorted[0]||0; const thr=Math.max(q10,0.02);
+  let sum=0,c=0,secs=new Set(); for(let f=0;f<d.N;f++){ const b=Math.min(nb-1,Math.floor(d.relT[f]/bin)); if(act[b]<=thr){ sum+=Math.hypot(d.ch[0][f],d.ch[1][f],d.ch[2][f]); c++; secs.add(b); } }
+  return c?{g:(sum/c)/9.80665,secs:secs.size}:null; }
+function updateGTag(){ const r=restingG(); if(!r){$("gTag").innerHTML="静止合加速度 —";return;} const few=r.secs<10; $("gTag").innerHTML=`静止合加速度 ≈ <b class="${few?"":(Math.abs(r.g-1)<0.2?"gval":"gbad")}" style="${few?"color:var(--faint)":""}">${r.g.toFixed(2)}g</b> <span style="color:var(--faint)">(最静${r.secs}秒${few?"样本偏少":""})</span>`; }
+
+/* 加载 */
+$("btnJson").onclick=()=>$("fileJson").click();
+$("fileJson").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ onDataLoaded(parseMotionJson(JSON.parse(r.result),parseInt($("accScale").value,10)),f.name); }catch(err){ alert("解析失败：\n"+err.message); } }; r.readAsText(f); e.target.value=""; };
+function onDataLoaded(d,name){ S.data=d; S.tagName=name; S.play.T=0; S.view.t0=0; S.view.t1=d.tspan||1; for(const k in rangeCache)delete rangeCache[k];
+  if(S.video&&S.videoName)initAlignFromName();
+  $("tagData").innerHTML=`<b>${escapeHtml(name)}</b> · v${d.version} · ${d.N.toLocaleString()}帧 · ${(d.tspan/1000/60).toFixed(1)}min · ${(d.N/(d.tspan/1000)).toFixed(1)}Hz · ${escapeHtml(d.device||"?")}`;
+  let w=[]; if(d.gapCount)w.push(`${d.gapCount}处丢包(最大${(d.maxGap/1000).toFixed(1)}s)已断开`); if(d.staticNote)w.push(d.staticNote); $("warnbar").textContent=w.join("  ");
+  resizeCanvases(); redrawBase(); redrawOverlay(); updateClocks(); updateGTag(); positionThumb();
+  $("btnPin").disabled=$("btnAuto").disabled=$("btnSetCorner").disabled=!(S.video&&S.data); checkRecovery(); }
+$("accScale").onchange=()=>{ if(!S.data){updateGTag();return;} const ns=parseInt($("accScale").value,10),factor=S.data.accScale/ns; for(const ci of[0,1,2]){const a=S.data.ch[ci];for(let i=0;i<a.length;i++)a[i]*=factor;} S.data.accScale=ns; for(const k in rangeCache)delete rangeCache[k]; redrawBase(); redrawOverlay(); updateGTag(); };
+
+$("btnVideo").onclick=()=>$("fileVideo").click();
+$("fileVideo").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const v=$("video"); v.src=URL.createObjectURL(f); v.style.display="block"; $("vempty").style.display="none"; S.video=v; S.videoName=f.name;
+  v.onloadedmetadata=()=>{ if(S.data)initAlignFromName(); else S.videoStartWall=parseNameToEpoch(f.name); $("btnPlay").disabled=$("btnBack").disabled=$("btnFwd").disabled=false; $("btnPin").disabled=$("btnAuto").disabled=$("btnSetCorner").disabled=!S.data; updateClocks(); }; e.target.value=""; };
+function parseNameToEpoch(name){ let m=name.match(/(\d{4})[-_.](\d{2})[-_.](\d{2})[ _T]+(\d{2})[-_:.](\d{2})[-_:.](\d{2})/); if(m)return beijingEpoch(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]);
+  m=name.match(/(\d{2})[-_:.](\d{2})[-_:.](\d{2})/); if(m&&S.data){ const bd=new Date(S.data.createTime+TZ); return beijingEpoch(bd.getUTCFullYear(),bd.getUTCMonth(),bd.getUTCDate(),+m[1],+m[2],+m[3]); } return null; }
+function initAlignFromName(){ const e=parseNameToEpoch(S.videoName); S.videoStartWall=(e!=null)?e:(S.data?S.data.createTime:0); S.alignMethod=(e!=null)?"filename":"default(0)"; }
+$("btnAuto").onclick=()=>{ const e=parseNameToEpoch(S.videoName); if(e==null){alert("视频文件名里没解析到时间。用设为当前帧或钉住。");return;} S.videoStartWall=e; S.alignMethod="filename"; updateClocks(); redrawOverlay(); };
+$("btnPin").onclick=()=>{ if(!S.video||!S.data)return; S.videoStartWall=(S.data.createTime+S.play.T)-S.video.currentTime*1000; S.alignMethod="pin"; updateClocks(); redrawOverlay(); };
+$("btnSetCorner").onclick=()=>{ if(!S.video||!S.data)return; const m=$("cornerT").value.trim().match(/^(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/); if(!m){alert("按 HH:MM:SS 或 HH:MM:SS.mmm 填写");return;} const bd=new Date(S.data.createTime+TZ),ms=m[4]?parseInt((m[4]+"00").slice(0,3)):0; S.videoStartWall=beijingEpoch(bd.getUTCFullYear(),bd.getUTCMonth(),bd.getUTCDate(),+m[1],+m[2],+m[3],ms)-S.video.currentTime*1000; S.alignMethod="corner"; updateClocks(); redrawOverlay(); };
+document.querySelectorAll(".offbtn").forEach(b=>b.onclick=()=>{ if(S.videoStartWall==null)return; S.videoStartWall+=parseFloat(b.dataset.off)*1000; S.alignMethod="manual"; updateClocks(); redrawOverlay(); });
+function offsetMs(){ return (S.videoStartWall!=null&&S.data)?(S.videoStartWall-S.data.createTime):null; }
+function videoWall(){ return (S.videoStartWall!=null&&S.video)?S.videoStartWall+S.video.currentTime*1000:null; }
+function relFromVideo(){ const w=videoWall(); return (w!=null&&S.data)?w-S.data.createTime:null; }
+function seekVideoToRel(T){ if(!S.video||S.videoStartWall==null||!S.data)return; const ct=(S.data.createTime+T-S.videoStartWall)/1000; if(!(S.video.duration&&(ct<0||ct>S.video.duration)))S.video.currentTime=clamp(ct,0,S.video.duration||1e9); }
+
+/* 视频控制 */
+const V=$("video");
+$("btnPlay").onclick=togglePlay; function togglePlay(){ if(!S.video)return; if(V.paused)V.play(); else V.pause(); }
+V.addEventListener("play",()=>{$("btnPlay").textContent="⏸ 暂停";loop();});
+V.addEventListener("pause",()=>{$("btnPlay").textContent="▶ 播放";});
+V.addEventListener("ended",()=>{$("btnPlay").textContent="▶ 播放";});
+$("rate").onchange=()=>{ if(S.video)V.playbackRate=parseFloat($("rate").value); };
+$("fps").onchange=()=>{ S.fps=Math.max(1,parseFloat($("fps").value)||25); };
+$("btnFwd").onclick=()=>stepFrame(1); $("btnBack").onclick=()=>stepFrame(-1);
+function stepFrame(dir){ if(!S.video)return; V.pause(); const fps=S.fps>0?S.fps:25; V.currentTime=clamp(V.currentTime+dir/fps,0,V.duration||1e9); syncFromVideo(); }
+V.addEventListener("seeked",()=>{ if(V.paused)syncFromVideo(); });
+V.addEventListener("timeupdate",()=>{ if(V.paused)syncFromVideo(); });
+function syncFromVideo(){ const T=relFromVideo(); if(T!=null){ S.play.T=T; ensureVisible(T); redrawOverlay(); updateClocks(); } }
+let raf=0; function loop(){ if(!S.video||V.paused){cancelAnimationFrame(raf);raf=0;return;} syncFromVideo(); raf=requestAnimationFrame(loop); }
+function updateClocks(){ $("vWall").textContent=fmtWall(videoWall()); $("iWall").textContent=S.data?fmtWall(S.data.createTime+S.play.T):"—"; }
+
+/* 画布布局：面板 + 温度条 + 泳道 + 标尺 */
+const base=$("base"),over=$("over"),bctx=base.getContext("2d"),octx=over.getContext("2d");
+let CW=0,CH=0,DPR=1; const PADL=92,PADR=14,PADT=8,PADB=2,LANEH=18,RULERH=18;
+const _cssCache={};
+function css(v){ if(v in _cssCache)return _cssCache[v]; const r=getComputedStyle(document.documentElement).getPropertyValue(v).trim()||v; _cssCache[v]=r; return r; }
+function resizeCanvases(){ const r=$("cwrap").getBoundingClientRect(); DPR=window.devicePixelRatio||1; CW=r.width; CH=r.height; for(const c of[base,over]){c.width=Math.round(CW*DPR);c.height=Math.round(CH*DPR);} bctx.setTransform(DPR,0,0,DPR,0,0); octx.setTransform(DPR,0,0,DPR,0,0); resizeMini(); }
+window.addEventListener("resize",()=>{ resizeCanvases(); redrawBase(); redrawOverlay(); positionThumb(); });
+function activePanels(){ return PANELS.filter(p=>!p.kind || (p.kind==="temp"?!!S.data.temp : p.kind==="motion"?!!S.data.motion : true)); }
+function layout(){ const AP=activePanels(),lanesH=S.labels.length*LANEH+4,plotW=CW-PADL-PADR;
+  const signalsH=Math.max(120,CH-PADT-PADB-lanesH-RULERH); const gap=4,each=(signalsH-gap*(AP.length-1))/AP.length; const geo=[]; let y=PADT;
+  for(let i=0;i<AP.length;i++){ geo.push({x:PADL,y,w:plotW,h:each,panel:AP[i]}); y+=each+gap; }
+  const sigBottom=PADT+signalsH;
+  const lanesTop=sigBottom+2, lanes={x:PADL,y:lanesTop,w:plotW,rowH:LANEH,h:lanesH}; const ruler={x:PADL,y:lanesTop+lanesH,w:plotW,h:RULERH};
+  return {geo,lanes,ruler,sigTop:PADT,sigBottom,plotW,lanesBottom:lanesTop+lanesH}; }
+function tToX(t){ const {t0,t1}=S.view; return PADL+(t-t0)/(t1-t0)*(CW-PADL-PADR); }
+function xToT(x){ const {t0,t1}=S.view; return t0+(x-PADL)/(CW-PADL-PADR)*(t1-t0); }
+function chRange(ci){ const a=S.data.ch[ci]; let mn=Infinity,mx=-Infinity; for(let i=0;i<a.length;i++){const v=a[i];if(v<mn)mn=v;if(v>mx)mx=v;} return[mn,mx]; }
+const rangeCache={};
+const MINSPAN={acc:0.6,gyr:6,mag:.12,temp:2,motion:5};
+function bucketRange(p){ const b=p.kind==="temp"?S.data.temp:S.data.motion; let mn=Infinity,mx=-Infinity; if(b)for(const q of b.v){if(q<mn)mn=q;if(q>mx)mx=q;} if(!isFinite(mn)){mn=0;mx=1;} if(mn===mx){mn-=1;mx+=1;} const s=MINSPAN[p.grp]||1; if(mx-mn<s){const c=(mn+mx)/2;mn=c-s/2;mx=c+s/2;} const pad=(mx-mn)*.12; return [mn-pad,mx+pad]; }
+function panelRangeGlobal(p){ if(p.kind)return bucketRange(p); const key="g"+p.ci; if(rangeCache[key])return rangeCache[key]; let [mn,mx]=chRange(p.ci); if(mn===mx){mn-=1;mx+=1;} const s=MINSPAN[p.grp]||1; if(mx-mn<s){const c=(mn+mx)/2;mn=c-s/2;mx=c+s/2;} const pad=(mx-mn)*.10; rangeCache[key]=[mn-pad,mx+pad]; return rangeCache[key]; }
+function panelRange(p){ if(p.kind)return bucketRange(p); if(!S.yView)return panelRangeGlobal(p); const T=S.data.relT,i0=Math.max(0,lb(T,S.view.t0)-1),i1=Math.min(T.length,lb(T,S.view.t1)+1),a=S.data.ch[p.ci]; let mn=Infinity,mx=-Infinity; for(let i=i0;i<i1;i++){const v=a[i];if(v<mn)mn=v;if(v>mx)mx=v;} if(!isFinite(mn))return panelRangeGlobal(p); const s=MINSPAN[p.grp]||1; if(mx-mn<s){const c=(mn+mx)/2;mn=c-s/2;mx=c+s/2;} const pad=(mx-mn)*.10; return [mn-pad,mx+pad]; }
+function redrawBase(){ bctx.clearRect(0,0,CW,CH); if(!S.data)return; const L=layout(); bctx.font="11px "+css("--mono"); for(const g of L.geo)drawPanel(g); drawLanes(L.lanes); drawRuler(L.ruler); }
+function drawPanel(g){ const {x,y,w,h,panel:p}=g; const [mn,mx]=panelRange(p); const yOf=v=>y+h-(v-mn)/(mx-mn)*h;
+  bctx.fillStyle=css("--panel2");bctx.fillRect(x,y,w,h); bctx.strokeStyle=css("--line");bctx.lineWidth=1;bctx.strokeRect(x+.5,y+.5,w-1,h-1);
+  bctx.strokeStyle="rgba(255,255,255,.045)";bctx.beginPath();const ym=y+h/2;bctx.moveTo(x,ym);bctx.lineTo(x+w,ym);bctx.stroke();
+  if(mn<0&&mx>0){const y0=yOf(0);bctx.strokeStyle="rgba(255,255,255,.13)";bctx.beginPath();bctx.moveTo(x,y0);bctx.lineTo(x+w,y0);bctx.stroke();}
+  drawGaps(x,y,w,h);
+  if(p.kind)drawBucket(p,g,mn,mx); else drawSeries(p.ci,p.col,g,mn,mx);
+  const dec=Math.abs(mx-mn)<2?3:(Math.abs(mx-mn)<20?2:1);
+  bctx.fillStyle=css("--dim");bctx.font="10px "+css("--mono");bctx.textAlign="right";bctx.textBaseline="middle";
+  bctx.fillText(mx.toFixed(dec),x-5,y+8); bctx.fillText(mn.toFixed(dec),x-5,y+h-8); if(h>46)bctx.fillText(((mn+mx)/2).toFixed(dec),x-5,y+h/2);
+  bctx.textAlign="right";bctx.textBaseline="alphabetic"; bctx.fillStyle=p.col;bctx.font='bold 11px '+css("--sans");bctx.fillText(p.name,x-36,y+h/2-1);
+  bctx.fillStyle=css("--faint");bctx.font='9px '+css("--sans");bctx.fillText(p.unit,x-36,y+h/2+11); bctx.textAlign="left"; }
+function drawBucket(p,g,mn,mx){ const {x,y,w,h}=g,b=p.kind==="temp"?S.data.temp:S.data.motion; if(!b||!b.v.length)return; const yOf=v=>y+h-(v-mn)/(mx-mn)*h;
+  bctx.save();bctx.beginPath();bctx.rect(x,y,w,h);bctx.clip();bctx.strokeStyle=p.col;bctx.lineWidth=1.3;bctx.beginPath();let st=true,py=null;
+  for(let i=0;i<b.v.length;i++){ const xx=tToX(b.t[i]),yv=yOf(b.v[i]); if(st){bctx.moveTo(xx,yv);st=false;}else{bctx.lineTo(xx,py);bctx.lineTo(xx,yv);} py=yv; }
+  if(py!=null){ const bw=b.v.length>1?(b.t[1]-b.t[0]):60000; bctx.lineTo(tToX(b.t[b.v.length-1]+bw),py); } bctx.stroke();bctx.restore(); }
+function drawGaps(x,y,w,h){ if(!S.data.gaps.size)return; bctx.strokeStyle="rgba(255,120,80,.25)";bctx.setLineDash([3,3]);bctx.beginPath(); for(const i of S.data.gaps){const t=(S.data.relT[i]+S.data.relT[i-1])/2;if(t<S.view.t0||t>S.view.t1)continue;const xx=tToX(t);if(xx<x||xx>x+w)continue;bctx.moveTo(xx,y);bctx.lineTo(xx,y+h);}bctx.stroke();bctx.setLineDash([]); }
+function drawSeries(ci,color,g,mn,mx){ const {x,y,w,h}=g,T=S.data.relT,A=S.data.ch[ci],yOf=v=>y+h-(v-mn)/(mx-mn)*h;
+  const i0=Math.max(0,lb(T,S.view.t0)-1),i1=Math.min(T.length,lb(T,S.view.t1)+1),samples=i1-i0;
+  bctx.save();bctx.beginPath();bctx.rect(x,y,w,h);bctx.clip();bctx.strokeStyle=color;bctx.lineWidth=1;bctx.beginPath();
+  if(samples<=w*2){ let sn=true; for(let i=i0;i<i1;i++){if(S.data.gaps.has(i))sn=true;const xx=tToX(T[i]),yy=yOf(A[i]);if(sn){bctx.moveTo(xx,yy);sn=false;}else bctx.lineTo(xx,yy);} }
+  else { let cc=-1,cmin=Infinity,cmax=-Infinity,st=false; const fl=()=>{if(cc<0)return;const xc=cc+.5,yT=yOf(cmax),yB=yOf(cmin);if(!st){bctx.moveTo(xc,(yT+yB)/2);st=true;}bctx.lineTo(xc,yT);bctx.lineTo(xc,yB);}; for(let i=i0;i<i1;i++){if(S.data.gaps.has(i)){fl();st=false;cc=-1;cmin=Infinity;cmax=-Infinity;}const col=Math.floor(tToX(T[i])),v=A[i];if(col!==cc){fl();cc=col;cmin=cmax=v;}else{if(v<cmin)cmin=v;if(v>cmax)cmax=v;}} fl(); }
+  bctx.stroke();bctx.restore(); }
+function drawTempStrip(g){ const {x,y,w,h}=g; bctx.fillStyle=css("--panel2");bctx.fillRect(x,y,w,h);bctx.strokeStyle=css("--line");bctx.strokeRect(x+.5,y+.5,w-1,h-1); const d=S.data;
+  if(d.temp){ const {t:tt,v:vv}=d.temp; let mn=Infinity,mx=-Infinity;for(const q of vv){if(q<mn)mn=q;if(q>mx)mx=q;}if(mn===mx){mn-=1;mx+=1;}
+    bctx.save();bctx.beginPath();bctx.rect(x,y,w,h);bctx.clip();bctx.strokeStyle=css("--warn");bctx.lineWidth=1.4;bctx.beginPath();let st=true;
+    for(let i=0;i<vv.length;i++){if(tt[i]<S.view.t0||tt[i]>S.view.t1)continue;const xx=tToX(tt[i]),yy=y+h-(vv[i]-mn)/(mx-mn)*h*.9-2;if(st){bctx.moveTo(xx,yy);st=false;}else bctx.lineTo(xx,yy);}bctx.stroke();bctx.restore();
+    bctx.fillStyle=css("--warn");bctx.textAlign="left";bctx.textBaseline="top";bctx.fillText(`温度 ${mn.toFixed(1)}~${mx.toFixed(1)}°C`,x+6,y+3); } }
+function drawLanes(g){ const {x,y,w,rowH}=g;
+  for(let i=0;i<S.labels.length;i++){ const L=S.labels[i],ry=y+i*rowH;
+    bctx.fillStyle=i%2?"rgba(255,255,255,.02)":"rgba(255,255,255,.04)"; bctx.fillRect(x,ry,w,rowH);
+    bctx.fillStyle=L.color; bctx.fillRect(x-PADL+4,ry+3,3,rowH-6);
+    bctx.fillStyle=css("--dim");bctx.font="10px "+css("--sans");bctx.textAlign="left";bctx.textBaseline="middle"; bctx.fillText(L.name.slice(0,5),x-PADL+10,ry+rowH/2);
+    bctx.strokeStyle="rgba(255,255,255,.05)";bctx.beginPath();bctx.moveTo(x,ry+rowH+.5);bctx.lineTo(x+w,ry+rowH+.5);bctx.stroke();
+  }
+  for(const ev of S.events){ const li=ev.li; if(li<0||li>=S.labels.length)continue; const L=S.labels[li],ry=y+li*rowH; const sel=ev.id===S.selEvent;
+    if(ev.t1==null){ const xx=tToX(ev.t0); if(xx<x-2||xx>x+w+2)continue; bctx.fillStyle=L.color;bctx.beginPath();bctx.moveTo(xx,ry+3);bctx.lineTo(xx+4,ry+rowH/2);bctx.lineTo(xx,ry+rowH-3);bctx.lineTo(xx-4,ry+rowH/2);bctx.closePath();bctx.fill(); if(sel){bctx.strokeStyle="#fff";bctx.lineWidth=1;bctx.stroke();} }
+    else { const xa=tToX(ev.t0),xb=tToX(ev.t1); if(xb<x||xa>x+w)continue; const a=Math.max(x,xa),b=Math.min(x+w,xb);
+      bctx.fillStyle=hex2rgba(L.color,sel?.55:.38); bctx.fillRect(a,ry+2,Math.max(2,b-a),rowH-4);
+      bctx.strokeStyle=L.color;bctx.lineWidth=sel?1.5:1;bctx.strokeRect(a+.5,ry+2.5,Math.max(1,b-a-1),rowH-5);
+      if(sel){ bctx.fillStyle="#fff"; bctx.fillRect(xa-1,ry+2,2,rowH-4); bctx.fillRect(xb-1,ry+2,2,rowH-4); } } } }
+function niceStep(span){ const target=span/6,steps=[100,200,500,1000,2000,5000,10000,15000,30000,60000,120000,300000,600000]; for(const s of steps)if(s>=target)return s; return 600000; }
+function drawRuler(g){ const {x,y,w,h}=g; bctx.fillStyle=css("--panel");bctx.fillRect(x,y,w,h); bctx.strokeStyle=css("--line");bctx.beginPath();bctx.moveTo(x,y+.5);bctx.lineTo(x+w,y+.5);bctx.stroke();
+  const step=niceStep(S.view.t1-S.view.t0); let t=Math.ceil(S.view.t0/step)*step; bctx.fillStyle=css("--dim");bctx.font="10px "+css("--mono");bctx.textAlign="center";bctx.textBaseline="middle";bctx.strokeStyle="rgba(255,255,255,.15)";
+  for(;t<=S.view.t1;t+=step){ const xx=tToX(t); bctx.beginPath();bctx.moveTo(xx,y);bctx.lineTo(xx,y+4);bctx.stroke(); bctx.fillText(fmtRel(t).replace(/^00:/,""),xx,y+h/2+2); } }
+
+let hoverX=null;
+function redrawOverlay(){ octx.clearRect(0,0,CW,CH); if(!S.data)return; const L=layout(),top=L.sigTop,bottom=L.lanesBottom;
+  if(S.pending){ const xx=tToX(S.pending.t0); if(xx>=PADL&&xx<=CW-PADR){ octx.strokeStyle=S.labels[S.pending.li].color;octx.setLineDash([4,3]);octx.lineWidth=1.5;octx.beginPath();octx.moveTo(xx,top);octx.lineTo(xx,bottom);octx.stroke();octx.setLineDash([]); } }
+  if(S.drag&&(S.drag.kind==="create"||S.drag.kind==="createLane")){ const a=Math.min(S.drag.t0,S.drag.t1),b=Math.max(S.drag.t0,S.drag.t1),xa=tToX(a),xb=tToX(b),c=S.labels[S.drag.li].color; octx.fillStyle=hex2rgba(c,.22);octx.fillRect(xa,top,xb-xa,bottom-top);octx.strokeStyle=c;octx.strokeRect(xa+.5,top+.5,xb-xa-1,bottom-top-1); }
+  const px=tToX(S.play.T); if(px>=PADL-1&&px<=CW-PADR+1){ octx.strokeStyle=css("--accent");octx.lineWidth=1.5;octx.beginPath();octx.moveTo(px,top-2);octx.lineTo(px,bottom+2);octx.stroke(); octx.fillStyle=css("--accent");octx.beginPath();octx.moveTo(px-4,top-2);octx.lineTo(px+4,top-2);octx.lineTo(px,top+4);octx.closePath();octx.fill(); }
+  if(hoverX!=null&&hoverX>=PADL&&hoverX<=CW-PADR){ const i=nearestIdx(xToT(hoverX)); octx.strokeStyle="rgba(255,255,255,.22)";octx.setLineDash([2,2]);octx.beginPath();octx.moveTo(hoverX,top);octx.lineTo(hoverX,L.sigBottom);octx.stroke();octx.setLineDash([]); if(i>=0)drawReadout(hoverX,i,L); } }
+function nearestIdx(t){ if(!S.data)return -1; const T=S.data.relT; let i=lb(T,t); if(i<=0)return 0; if(i>=T.length)return T.length-1; return (t-T[i-1]<T[i]-t)?i-1:i; }
+function drawReadout(x,i,L){ const d=S.data; const bkt=b=>{ if(!b||!b.v.length)return null; let j=lb(b.t,d.relT[i]); if(j>=b.v.length)j=b.v.length-1; if(j<0)j=0; return b.v[j]; }; const tp=bkt(d.temp),mo=bkt(d.motion);
+  const lines=["时间 "+fmtWall(d.createTime+d.relT[i]).slice(11)+"   样本 "+i,
+    "加速度 "+d.ch[0][i].toFixed(3)+", "+d.ch[1][i].toFixed(3)+", "+d.ch[2][i].toFixed(3)+" m/s²",
+    "角速度 "+d.ch[3][i].toFixed(3)+", "+d.ch[4][i].toFixed(3)+", "+d.ch[5][i].toFixed(3)+" deg/s",
+    "磁场 "+d.ch[6][i].toFixed(3)+", "+d.ch[7][i].toFixed(3)+", "+d.ch[8][i].toFixed(3)+" Gauss"];
+  if(tp!=null)lines.push("温度 "+tp.toFixed(2)+" °C    运动 "+(mo!=null?mo:"-")+" 次/分");
+  octx.font="11px "+css("--mono");let wmax=0;for(const l of lines)wmax=Math.max(wmax,octx.measureText(l).width);const bw=wmax+16,bh=lines.length*16+8;let bx=x+12;if(bx+bw>CW-PADR)bx=x-12-bw;if(bx<PADL)bx=PADL+2;let by=L.sigTop+4;
+  octx.fillStyle="rgba(8,12,20,.94)";octx.strokeStyle=css("--line");octx.fillRect(bx,by,bw,bh);octx.strokeRect(bx+.5,by+.5,bw,bh);octx.textAlign="left";octx.textBaseline="top";
+  for(let k=0;k<lines.length;k++){octx.fillStyle=k===0?css("--accent"):css("--ink");octx.fillText(lines[k],bx+8,by+5+k*16);} }
+
+/* 交互：曲线区拖=框区间/单击=跳，泳道=选/挪/改边/建，标尺=拖播放头 */
+const cw=$("cwrap"); const EDGE=5, MOVE_THRESH=3;
+cw.addEventListener("wheel",e=>{ if(!S.data)return; e.preventDefault(); const t=xToT(clamp(e.offsetX,PADL,CW-PADR)),f=e.deltaY<0?.82:1.22; let{t0,t1}=S.view;t0=t+(t0-t)*f;t1=t+(t1-t)*f;const span=Math.max(50,t1-t0);if(t0<0)t0=0;t1=t0+span;if(t1>S.data.tspan){t1=S.data.tspan;t0=Math.max(0,t1-span);}S.view.t0=t0;S.view.t1=t1;updateViewTag();redrawBase();redrawOverlay();positionThumb(); },{passive:false});
+function laneHit(li,x){ const cand=S.events.filter(e=>e.li===li); for(const ev of cand){ if(ev.t1==null){ if(Math.abs(x-tToX(ev.t0))<=6)return{ev,zone:"point"}; } else { const xa=tToX(ev.t0),xb=tToX(ev.t1); if(x>=xa-EDGE&&x<=xb+EDGE){ if(Math.abs(x-xa)<=EDGE)return{ev,zone:"left"}; if(Math.abs(x-xb)<=EDGE)return{ev,zone:"right"}; return{ev,zone:"body"}; } } } return null; }
+cw.addEventListener("mousedown",e=>{ if(!S.data)return; const x=e.offsetX,y=e.offsetY,L=layout();
+  if(e.shiftKey){ S.drag={kind:"pan",x0:e.clientX,t0:S.view.t0,t1:S.view.t1}; bindDrag(); return; }
+  // 标尺：拖播放头
+  if(y>=L.ruler.y&&y<=L.ruler.y+L.ruler.h){ S.drag={kind:"scrub"}; setPlayhead(clamp(xToT(x),0,S.data.tspan),true); bindDrag(); return; }
+  // 泳道
+  if(y>=L.lanes.y&&y<L.lanes.y+L.lanes.h){ const li=clamp(Math.floor((y-L.lanes.y)/L.lanes.rowH),0,S.labels.length-1); const hit=laneHit(li,x);
+    if(hit){ S.selEvent=hit.ev.id; pushUndo(); if(hit.zone==="body"||hit.zone==="point"){ S.drag={kind:"move",ev:hit.ev,orig:{t0:hit.ev.t0,t1:hit.ev.t1},grabT:xToT(x)}; } else { S.drag={kind:"resize",ev:hit.ev,side:hit.zone}; } renderEvents(); redrawBase(); redrawOverlay(); bindDrag(); return; }
+    const Lb=S.labels[li];
+    if(Lb.type==="point"){ addEvent(li,clamp(xToT(x),0,S.data.tspan),null); return; }
+    S.drag={kind:"createLane",li,t0:clamp(xToT(x),0,S.data.tspan),t1:clamp(xToT(x),0,S.data.tspan)}; bindDrag(); return; }
+  // 曲线/温度区：按下待定，动了=框区间(选中标签)，没动=跳播放头
+  if(x>=PADL&&x<=CW-PADR&&y>=L.sigTop&&y<=L.sigBottom){ const isPt=(S.labels[S.selLabel]||{}).type==="point"; S.drag=isPt?{kind:"scrub"}:{kind:"sigdown",x0:e.clientX,t0:clamp(xToT(x),0,S.data.tspan)}; if(isPt)setPlayhead(clamp(xToT(x),0,S.data.tspan),true); bindDrag(); return; } });
+function bindDrag(){ window.addEventListener("mousemove",onDrag); window.addEventListener("mouseup",endDrag); }
+function onDrag(e){ if(!S.drag)return; const rect=cw.getBoundingClientRect(),x=e.clientX-rect.left,d=S.drag;
+  if(d.kind==="pan"){ const dt=(e.clientX-d.x0)/(CW-PADL-PADR)*(d.t1-d.t0);let t0=d.t0-dt,t1=d.t1-dt;const span=t1-t0;if(t0<0){t0=0;t1=span;}if(t1>S.data.tspan){t1=S.data.tspan;t0=t1-span;}S.view.t0=t0;S.view.t1=t1;updateViewTag();redrawBase();redrawOverlay();positionThumb(); }
+  else if(d.kind==="scrub"){ setPlayhead(clamp(xToT(x),0,S.data.tspan),true); }
+  else if(d.kind==="create"||d.kind==="createLane"){ d.t1=clamp(xToT(x),0,S.data.tspan); redrawOverlay(); }
+  else if(d.kind==="resize"){ const t=clamp(xToT(x),0,S.data.tspan); if(d.side==="left")d.ev.t0=Math.min(t,d.ev.t1-20); else d.ev.t1=Math.max(t,d.ev.t0+20); redrawBase();redrawOverlay(); }
+  else if(d.kind==="move"){ const dt=xToT(x)-d.grabT; if(d.ev.t1==null){ d.ev.t0=clamp(d.orig.t0+dt,0,S.data.tspan); } else { const dur=d.orig.t1-d.orig.t0; let nt0=clamp(d.orig.t0+dt,0,S.data.tspan-dur); d.ev.t0=nt0; d.ev.t1=nt0+dur; } redrawBase();redrawOverlay(); }
+  else if(d.kind==="sigdown"){ if(Math.abs(e.clientX-d.x0)>MOVE_THRESH){ S.drag={kind:"create",li:S.selLabel,t0:d.t0,t1:clamp(xToT(x),0,S.data.tspan)}; redrawOverlay(); } } }
+function endDrag(e){ window.removeEventListener("mousemove",onDrag); window.removeEventListener("mouseup",endDrag); const d=S.drag;
+  if(d){ if((d.kind==="create"||d.kind==="createLane")){ const a=Math.min(d.t0,d.t1),b=Math.max(d.t0,d.t1); if(Math.abs(tToX(a)-tToX(b))>4)addEvent(d.li,a,b); }
+    else if(d.kind==="sigdown"){ setPlayhead(d.t0,true); }
+    else if(d.kind==="resize"||d.kind==="move"){ if(d.ev.t1!=null&&d.ev.t0>d.ev.t1){const t=d.ev.t0;d.ev.t0=d.ev.t1;d.ev.t1=t;} S.events.sort((a,b)=>a.t0-b.t0); renderEvents(); autoSave(); } }
+  S.drag=null; redrawBase(); redrawOverlay(); }
+cw.addEventListener("mousemove",e=>{ hoverX=e.offsetX; if(!S.drag)redrawOverlay(); });
+cw.addEventListener("mouseleave",()=>{ hoverX=null; if(!S.drag)redrawOverlay(); });
+function setPlayhead(T,seekVid){ S.play.T=clamp(T,0,S.data?S.data.tspan:0); if(seekVid)seekVideoToRel(S.play.T); ensureVisible(S.play.T); updateClocks(); redrawOverlay(); }
+function ensureVisible(T){ const {t0,t1}=S.view,span=t1-t0; if(T<t0||T>t1){ let n0=T-span*.3;if(n0<0)n0=0;let n1=n0+span;if(n1>S.data.tspan){n1=S.data.tspan;n0=Math.max(0,n1-span);}S.view.t0=n0;S.view.t1=n1;updateViewTag();redrawBase();positionThumb(); } }
+function updateViewTag(){ if(!S.data){$("tagView").textContent="—";return;} $("tagView").textContent=`视窗 ${fmtRel(S.view.t0)}–${fmtRel(S.view.t1)}  偏移 ${offsetMs()!=null?(offsetMs()/1000).toFixed(2)+"s":"—"}`; }
+
+const scroll=$("scroll"),thumb=$("thumb");
+function positionThumb(){ drawMini(); if(!S.data){thumb.style.width="0";return;} const total=S.data.tspan||1,w=scroll.clientWidth; thumb.style.left=S.view.t0/total*w+"px"; thumb.style.width=Math.max(16,(S.view.t1-S.view.t0)/total*w)+"px"; }
+/* 活动概览缩略条 */
+const mini=$("mini"),mctx=mini.getContext("2d"); let MW=0,MH=0;
+function resizeMini(){ const r=$("miniwrap").getBoundingClientRect(); MW=r.width;MH=r.height; mini.width=Math.round(MW*DPR);mini.height=Math.round(MH*DPR); mctx.setTransform(DPR,0,0,DPR,0,0); }
+function drawMini(){ if(!MW)resizeMini(); if(!MW)return; mctx.clearRect(0,0,MW,MH); if(!S.data)return; const total=S.data.tspan||1,act=S.data.act,amax=S.data.actMax||1,nb=act.length,pad=2,h=MH-2*pad;
+  mctx.fillStyle="rgba(120,180,255,.6)";
+  for(let x=0;x<MW;x++){ const t0=x/MW*total,t1=(x+1)/MW*total; let b0=Math.floor(t0/S.data.actBinMs),b1=Math.min(nb-1,Math.floor(t1/S.data.actBinMs)),m=0; for(let b=b0;b<=b1;b++)if(act[b]>m)m=act[b]; const bar=(amax>0?Math.min(1,m/amax):0)*h; if(bar>0.4)mctx.fillRect(x,pad+h-bar,1,bar); }
+  const vx0=S.view.t0/total*MW,vx1=S.view.t1/total*MW; mctx.fillStyle="rgba(255,255,255,.10)";mctx.fillRect(vx0,0,Math.max(2,vx1-vx0),MH); mctx.strokeStyle=css("--accent");mctx.lineWidth=1;mctx.strokeRect(vx0+.5,.5,Math.max(1,vx1-vx0-1),MH-1);
+  const px=S.play.T/total*MW; mctx.strokeStyle=css("--accent");mctx.beginPath();mctx.moveTo(px,0);mctx.lineTo(px,MH);mctx.stroke(); }
+let miniDrag=false;
+$("miniwrap").addEventListener("mousedown",e=>{ if(!S.data)return; miniDrag=true; miniJump(e); const mv=ev=>{if(miniDrag)miniJump(ev);},up=()=>{miniDrag=false;window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);}; window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up); });
+function miniJump(e){ const r=$("miniwrap").getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),total=S.data.tspan,span=S.view.t1-S.view.t0,n0=clamp(x/r.width*total-span/2,0,total-span); S.view.t0=n0;S.view.t1=n0+span;updateViewTag();redrawBase();redrawOverlay();positionThumb(); }
+function jumpAct(dir){ if(!S.data)return; const act=S.data.act,bin=S.data.actBinMs,nb=act.length,thr=Math.max(0.12,(S.data.actMax||0)*0.15); let b=Math.floor(S.play.T/bin)+dir;
+  while(b>=0&&b<nb){ if(act[b]>thr){ const T=(b+0.5)*bin,span=S.view.t1-S.view.t0,n0=clamp(T-span/2,0,S.data.tspan-span); S.view.t0=n0;S.view.t1=n0+span; setPlayhead(T,true); updateViewTag();redrawBase();redrawOverlay();positionThumb(); return; } b+=dir; }
+  alert(dir>0?"后面没有更强的活动了":"前面没有更强的活动了"); }
+$("btnNextAct").onclick=()=>jumpAct(1); $("btnPrevAct").onclick=()=>jumpAct(-1);
+$("yView").onchange=()=>{ S.yView=$("yView").checked; redrawBase(); redrawOverlay(); };
+let thumbDrag=null;
+scroll.addEventListener("mousedown",e=>{ if(!S.data)return; const w=scroll.clientWidth,total=S.data.tspan,tR=thumb.getBoundingClientRect(),sR=scroll.getBoundingClientRect(),span=S.view.t1-S.view.t0;
+  if(e.clientX>=tR.left&&e.clientX<=tR.right){thumbDrag={x0:e.clientX,t0:S.view.t0};} else {const n0=clamp((e.clientX-sR.left)/w*total-span/2,0,total-span);S.view.t0=n0;S.view.t1=n0+span;updateViewTag();redrawBase();redrawOverlay();positionThumb();thumbDrag={x0:e.clientX,t0:S.view.t0};}
+  window.addEventListener("mousemove",onThumb);window.addEventListener("mouseup",()=>{thumbDrag=null;window.removeEventListener("mousemove",onThumb);}); });
+function onThumb(e){ if(!thumbDrag)return; const w=scroll.clientWidth,total=S.data.tspan,span=S.view.t1-S.view.t0,dt=(e.clientX-thumbDrag.x0)/w*total,n0=clamp(thumbDrag.t0+dt,0,total-span);S.view.t0=n0;S.view.t1=n0+span;updateViewTag();redrawBase();redrawOverlay();positionThumb(); }
+
+const splitter=$("splitter");
+splitter.addEventListener("mousedown",e=>{ e.preventDefault(); const sx=e.clientX,sw=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--vw"));
+  const mv=ev=>{ const total=window.innerWidth,w=clamp(sw-(ev.clientX-sx),300,total*.72); document.documentElement.style.setProperty("--vw",w+"px"); resizeCanvases();redrawBase();redrawOverlay();positionThumb(); };
+  const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);}; window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up); });
+
+/* 标签面板 */
+function renderLabels(){ const box=$("labList");box.innerHTML=""; S.labels.forEach((L,i)=>{const d=document.createElement("div");d.className="lab"+(i===S.selLabel?" sel":"");d.title=L.def||"";d.innerHTML=`<span class="sw" style="background:${L.color}"></span><span class="nm">${escapeHtml(L.name)}${L.en?' <span style="color:var(--faint);font-size:10px">'+escapeHtml(L.en)+'</span>':''}</span><span class="tp">${L.cat||(L.type==="point"?"点":"区间")}</span><span class="kk">${L.key||"·"}</span>`;d.onclick=()=>{S.selLabel=i;renderLabels();};box.appendChild(d);}); }
+$("btnAddLab").onclick=()=>{ const name=prompt("新标签名称");if(!name)return;const key=(prompt("快捷键(单字符，可空)","")||"").slice(0,1);const type=confirm("区间标签吗？\n确定=区间  取消=点事件")?"interval":"point";S.labels.push({name,key,color:randColor(),type});S.selLabel=S.labels.length-1;renderLabels();resizeCanvases();redrawBase();redrawOverlay(); };
+$("btnEditLab").onclick=()=>{ const L=S.labels[S.selLabel];if(!L)return;const name=prompt("名称",L.name);if(name==null)return;L.name=name||L.name;const key=prompt("快捷键",L.key||"");if(key!=null)L.key=key.slice(0,1);const color=prompt("颜色 #RRGGBB",L.color);if(color&&/^#?[0-9a-fA-F]{6}$/.test(color))L.color=color[0]==="#"?color:"#"+color;const t=prompt("类型 interval/point",L.type);if(t==="interval"||t==="point")L.type=t;const df=prompt("定义/标注范围(悬停可见)",L.def||"");if(df!=null)L.def=df;renderLabels();redrawBase();renderEvents();redrawOverlay(); };
+$("btnDefs").onclick=()=>{ let h='<h3>标注范围 · 各标签操作性定义</h3><table><thead><tr><th>标签</th><th>类别</th><th>最短</th><th>可重叠</th><th>定义与起止判定</th></tr></thead><tbody>';
+  for(const L of S.labels){ h+=`<tr><td><span class="pill" style="background:${hex2rgba(L.color,.22)};color:${L.color}">${escapeHtml(L.name)}</span> ${L.en?'<span class="mono" style="color:var(--faint)">'+escapeHtml(L.en)+'</span>':''}</td><td>${L.cat||"-"}</td><td class="mono">${L.minDur?L.minDur+"s":"-"}</td><td>${L.overlap?"是":"否"}</td><td style="white-space:normal;max-width:430px">${escapeHtml(L.def||"")}</td></tr>`; }
+  h+='</tbody></table><div class="hint" style="margin-top:8px">状态类(休息/行走)互斥、应铺满时间轴，任一时刻只归一个状态；事件类(爬跨/抬尾/撒尿/起卧/产犊)叠加在状态之上、可重叠。阈值与最短时长请按你们实拍曲线校准。这些定义随工程保存，也是导出前完整性检查的依据。</div><div class="row" style="margin-top:10px;justify-content:flex-end"><button id="defClose">关闭</button></div>';
+  openModal(h); $("defClose").onclick=closeModal; };
+function randColor(){ return hslHex(Math.floor(Math.random()*360),70,62); }
+function hslHex(h,s,l){ s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1))),to=x=>Math.round(x*255).toString(16).padStart(2,"0");return "#"+to(f(0))+to(f(8))+to(f(4)); }
+
+/* 事件 */
+function addEvent(li,t0,t1){ pushUndo(); const L=S.labels[li],evi=$("defEvi").value,conf=$("defConf").value; if(L.type==="point")S.events.push({id:S.seq++,li,t0,t1:null,note:"",ev:evi,conf}); else S.events.push({id:S.seq++,li,t0:Math.min(t0,t1),t1:Math.max(t0,t1),note:"",ev:evi,conf}); S.selEvent=S.seq-1; S.events.sort((a,b)=>a.t0-b.t0); renderEvents();redrawBase();redrawOverlay(); autoSave(); }
+function hitLabelKey(k){ const i=S.labels.findIndex(L=>L.key&&L.key.toLowerCase()===k.toLowerCase()); if(i<0)return false; const L=S.labels[i]; if(L.type==="point"){addEvent(i,S.play.T,null);return true;} if(S.pending&&S.pending.li===i){addEvent(i,S.pending.t0,S.play.T);S.pending=null;}else{S.pending={li:i,t0:S.play.T};} S.selLabel=i;renderLabels();redrawOverlay();return true; }
+const EVI={both:"两者",video:"仅视频",curve:"仅曲线"},CONF={high:"高",mid:"中",low:"低"};
+function renderEvents(){ const box=$("evtable");$("tagCount").textContent=S.events.length+" 条"; if(!S.events.length){box.innerHTML='<div class="empty">还没有标注。选中标签后在曲线上拖，或在泳道里拖。</div>';return;}
+  let h='<table><thead><tr><th>#</th><th>标签</th><th>开始</th><th>结束</th><th>时长</th><th>判据</th><th>置信</th><th>开始墙钟</th><th>备注</th><th></th></tr></thead><tbody>';
+  S.events.forEach((ev,n)=>{ const L=S.labels[ev.li]||{name:"?",color:"#888"},wall=S.data?fmtWall(S.data.createTime+ev.t0):"—";
+    const es=`<select data-id="${ev.id}" data-f="ev">`+Object.keys(EVI).map(k=>`<option value="${k}" ${ev.ev===k?"selected":""}>${EVI[k]}</option>`).join("")+`</select>`;
+    const cs=`<select data-id="${ev.id}" data-f="conf">`+Object.keys(CONF).map(k=>`<option value="${k}" ${ev.conf===k?"selected":""}>${CONF[k]}</option>`).join("")+`</select>`;
+    h+=`<tr class="${S.selEvent===ev.id?"selrow":""}" data-id="${ev.id}"><td class="mono">${n+1}</td><td><span class="pill" style="background:${hex2rgba(L.color,.22)};color:${L.color}">${escapeHtml(L.name)}</span></td><td class="mono">${fmtRel(ev.t0)}</td><td class="mono">${ev.t1==null?"·":fmtRel(ev.t1)}</td><td class="mono">${ev.t1==null?"点":fmtDur(ev.t1-ev.t0)}</td><td>${es}</td><td>${cs}</td><td class="mono" style="color:var(--dim)">${wall}</td><td class="notecell" data-note="${ev.id}" style="cursor:pointer;color:${ev.note?"var(--ink)":"var(--faint)"}">${escapeHtml((ev.note||"＋备注").slice(0,10))}</td><td><span class="del" data-del="${ev.id}">删</span></td></tr>`; });
+  h+="</tbody></table>";box.innerHTML=h;
+  box.querySelectorAll("tr[data-id]").forEach(tr=>{tr.onclick=e=>{if(e.target.dataset.del||e.target.tagName==="SELECT"||e.target.tagName==="OPTION")return;const id=+tr.dataset.id;S.selEvent=id;const ev=S.events.find(x=>x.id===id);if(ev)setPlayhead(ev.t0,true);renderEvents();redrawBase();redrawOverlay();};});
+  box.querySelectorAll("[data-del]").forEach(s=>s.onclick=e=>{e.stopPropagation();delEvent(+s.dataset.del);});
+  box.querySelectorAll("select[data-id]").forEach(s=>s.onchange=()=>{const ev=S.events.find(x=>x.id===+s.dataset.id);if(ev){ev[s.dataset.f]=s.value;autoSave();}});
+  box.querySelectorAll("[data-note]").forEach(td=>td.onclick=e=>{e.stopPropagation();const ev=S.events.find(x=>x.id===+td.dataset.note);if(!ev)return;const v=prompt("备注",ev.note||"");if(v!=null){pushUndo();ev.note=v;renderEvents();autoSave();}}); }
+function delEvent(id){ pushUndo(); S.events=S.events.filter(x=>x.id!==id); if(S.selEvent===id)S.selEvent=null; renderEvents();redrawBase();redrawOverlay(); autoSave(); }
+$("btnClearEv").onclick=()=>{ if(S.events.length&&confirm("清空全部 "+S.events.length+" 条？")){pushUndo();S.events=[];S.selEvent=null;S.pending=null;renderEvents();redrawBase();redrawOverlay();autoSave();} };
+
+window.addEventListener("keydown",e=>{ const tag=(e.target.tagName||"").toLowerCase(); if(tag==="input"||tag==="textarea"||tag==="select")return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();undo();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();$("btnSaveProj").click();return;}
+  if(e.key===" "){e.preventDefault();togglePlay();return;}
+  if(e.key==="Escape"){if(S.pending){S.pending=null;redrawOverlay();}return;}
+  if(e.key==="Delete"||e.key==="Backspace"){if(S.selEvent!=null){e.preventDefault();delEvent(S.selEvent);}return;}
+  if(e.key==="["){stepFrame(-1);return;} if(e.key==="]"){stepFrame(1);return;}
+  if(e.key==="ArrowLeft"){if(S.data)setPlayhead(S.play.T-(e.shiftKey?1000:100),true);return;}
+  if(e.key==="ArrowRight"){if(S.data)setPlayhead(S.play.T+(e.shiftKey?1000:100),true);return;}
+  if(e.key==="+"||e.key==="="){zoomAt(.8);return;} if(e.key==="-"||e.key==="_"){zoomAt(1.25);return;}
+  if(e.key.toLowerCase()==="f"){if(S.data){S.view.t0=0;S.view.t1=S.data.tspan;updateViewTag();redrawBase();redrawOverlay();positionThumb();}return;}
+  if(e.key.toLowerCase()==="n"){jumpAct(1);return;} if(e.key.toLowerCase()==="p"){jumpAct(-1);return;}
+  if(e.key.length===1){if(hitLabelKey(e.key))e.preventDefault();} });
+function zoomAt(f){ if(!S.data)return; const c=(S.view.t0+S.view.t1)/2;let t0=c+(S.view.t0-c)*f,t1=c+(S.view.t1-c)*f;const span=Math.max(50,t1-t0);if(t0<0)t0=0;t1=t0+span;if(t1>S.data.tspan){t1=S.data.tspan;t0=Math.max(0,t1-span);}S.view.t0=t0;S.view.t1=t1;updateViewTag();redrawBase();redrawOverlay();positionThumb(); }
+
+/* 导出 */
+function pushUndo(){ try{S.undo.push(JSON.stringify(S.events)); if(S.undo.length>60)S.undo.shift();}catch(e){} }
+function undo(){ if(!S.undo.length)return; try{S.events=JSON.parse(S.undo.pop());}catch(e){return;} S.selEvent=null; renderEvents(); redrawBase(); redrawOverlay(); autoSave(); }
+function buildProject(){ return {_type:"bovine-annotation-project",version:4,annotator:$("annot").value||"",protocol:$("proto").value||"",source:{name:S.tagName||"",device:S.data?S.data.device:"",createTime:S.data?S.data.createTime:null,dataVersion:S.data?S.data.version:null,accScale:S.data?S.data.accScale:null},align:{method:S.alignMethod||"",offsetMs:offsetMs(),videoStartWall:S.videoStartWall},videoName:S.videoName,labels:S.labels,events:S.events}; }
+function loadProjectObj(p){ if(Array.isArray(p.labels))S.labels=p.labels; if(Array.isArray(p.events)){S.events=p.events.map(ev=>Object.assign({ev:"both",conf:"high",note:""},ev));S.seq=Math.max(1,...S.events.map(x=>x.id||0))+1;} if(p.annotator!=null)$("annot").value=p.annotator; if(p.protocol!=null)$("proto").value=p.protocol; if(p.align){if(p.align.videoStartWall!=null)S.videoStartWall=p.align.videoStartWall;if(p.align.method)S.alignMethod=p.align.method;} if(p.source&&[4096,8192].includes(p.source.accScale)){$("accScale").value=String(p.source.accScale);if(S.data&&S.data.accScale!==p.source.accScale)$("accScale").onchange();} S.selEvent=null;S.pending=null;S.undo=[];renderLabels();renderEvents();resizeCanvases();redrawBase();redrawOverlay();updateClocks();updateViewTag(); }
+function autoKey(){ return S.data?("bovine_auto_"+S.data.device+"_"+S.data.createTime):null; }
+function autoSave(){ const k=autoKey(); if(!k)return; try{localStorage.setItem(k,JSON.stringify({t:Date.now(),proj:buildProject()}));}catch(e){} }
+function checkRecovery(){ const k=autoKey(); if(!k)return; let raw; try{raw=localStorage.getItem(k);}catch(e){return;} if(!raw)return; let o; try{o=JSON.parse(raw);}catch(e){return;} if(o&&o.proj&&o.proj.events&&o.proj.events.length&&!S.events.length){ if(confirm("检测到本机上次未保存的标注("+o.proj.events.length+"条，"+fmtWall(o.t)+")。恢复吗？")){ loadProjectObj(o.proj); } } }
+function csvq(v){ v=String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+$("btnCsv").onclick=()=>{ if(!S.events.length){alert("还没有标注可导出");return;} const d=S.data,T=d?d.relT:null;
+  const issues=[]; S.events.forEach((ev,n)=>{ const L=S.labels[ev.li]||{}; const id=n+1;
+    if(ev.t1!=null&&ev.t1<ev.t0)issues.push(`#${id} ${L.name} 结束早于开始`);
+    if(ev.t0<0||(d&&ev.t0>d.tspan))issues.push(`#${id} ${L.name} 超出数据范围`);
+    if(ev.t1!=null&&L.minDur&&(ev.t1-ev.t0)<L.minDur*1000)issues.push(`#${id} ${L.name} 短于最短时长 ${L.minDur}s`); });
+  const se=S.events.filter(ev=>{const L=S.labels[ev.li];return L&&L.cat==="状态"&&ev.t1!=null;}).slice().sort((a,b)=>a.t0-b.t0);
+  for(let i=1;i<se.length;i++){ if(se[i].t0<se[i-1].t1-1)issues.push(`互斥状态重叠 ${(S.labels[se[i-1].li]||{}).name}×${(S.labels[se[i].li]||{}).name} @${fmtRel(se[i].t0)}`); }
+  if(d&&se.length){ const cov=[]; for(const e of se){ if(cov.length&&e.t0<=cov[cov.length-1][1])cov[cov.length-1][1]=Math.max(cov[cov.length-1][1],e.t1); else cov.push([e.t0,e.t1]); } let prev=0,gaps=0; for(const c of cov){ if(c[0]-prev>2000){gaps++; if(gaps<=5)issues.push(`状态未覆盖空隙 ${fmtRel(prev)}–${fmtRel(c[0])}`);} prev=Math.max(prev,c[1]); } if(d.tspan-prev>2000){gaps++; if(gaps<=5)issues.push(`状态未覆盖空隙 ${fmtRel(prev)}–末尾`);} if(gaps>5)issues.push(`…共${gaps}处状态空隙(这些段训练时无标签)`); }
+  if(S.videoStartWall==null)issues.push("视频未加载或未对齐(同步偏移缺失)");
+  if(issues.length&&!confirm("完整性检查发现 "+issues.length+" 处提示：\n\n"+issues.slice(0,18).join("\n")+(issues.length>18?"\n…等":"")+"\n\n仍要导出吗？"))return;
+  const sid=S.tagName||(d?d.device+"_"+d.createTime:"");
+  const head=["index","session_id","label","en","type","evidence","confidence","annotator","protocol","t_start_rel_ms","t_end_rel_ms","duration_ms","frame_start","frame_end","t_start_wall_bj","t_end_wall_bj","note"],rows=[head];
+  S.events.forEach((ev,n)=>{ const L=S.labels[ev.li]||{}; const fs=T?lb(T,ev.t0):"",fe=(T&&ev.t1!=null)?lb(T,ev.t1):"";
+    rows.push([n+1,sid,L.name||"",L.en||"",L.type||"",EVI[ev.ev]||ev.ev||"",CONF[ev.conf]||ev.conf||"",$("annot").value||"",$("proto").value||"",Math.round(ev.t0),ev.t1==null?"":Math.round(ev.t1),ev.t1==null?"":Math.round(ev.t1-ev.t0),fs,fe,d?fmtWall(d.createTime+ev.t0):"",(ev.t1!=null&&d)?fmtWall(d.createTime+ev.t1):"",ev.note||""]); });
+  download("\ufeff"+rows.map(r=>r.map(csvq).join(",")).join("\r\n"),(d?d.device+"_":"")+"events.csv","text/csv");
+  const rg=restingG(); const meta={tool:"牛尾环九轴标注台",session_id:sid,annotator:$("annot").value||"",protocol:$("proto").value||"",device:d?d.device:"",create_time_bj:d?fmtWall(d.createTime):"",imu_version:d?d.version:"",acc_scale_divisor:d?d.accScale:"",sampling_hz:d?+(d.N/(d.tspan/1000)).toFixed(2):"",gap_count:d?d.gapCount:"",resting_g:rg?+rg.g.toFixed(3):"",align_method:S.alignMethod||"",align_offset_ms:offsetMs()!=null?Math.round(offsetMs()):"",exported_bj:fmtWall(Date.now())};
+  download(JSON.stringify(meta,null,2),(d?d.device+"_":"")+"events_meta.json","application/json"); };
+$("btnBoris").onclick=()=>{ if(!S.events.length){alert("还没有标注可导出");return;} const d=S.data,obs=(d?d.device:"obs")+"_"+(S.tagName||""),rows=[["Observation id","Behavior","Behavioral category","Start (s)","Stop (s)","Duration (s)"]];
+  S.events.forEach(ev=>{const L=S.labels[ev.li]||{name:"?"};const t0=ev.t0/1000,t1=ev.t1==null?ev.t0/1000:ev.t1/1000;rows.push([obs,L.name,L.type==="point"?"point":"state",t0.toFixed(3),t1.toFixed(3),(t1-t0).toFixed(3)]);});
+  download("\ufeff"+rows.map(r=>r.map(csvq).join(",")).join("\r\n"),(d?d.device+"_":"")+"events_BORIS.csv","text/csv"); };
+$("btnSaveProj").onclick=()=>{ download(JSON.stringify(buildProject(),null,2),(S.data?S.data.device+"_":"")+"annotation_project.json","application/json"); };
+$("btnLoadProj").onclick=()=>$("fileProj").click();
+$("fileProj").onchange=e=>{ const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(p._type!=="bovine-annotation-project")throw new Error("不是本工具的工程文件");
+  loadProjectObj(p);
+  alert("工程已载入，事件 "+S.events.length+" 条。\n视频与九轴 JSON 请另行打开。视频文件名应为 "+(p.videoName||"?"));
+}catch(err){alert("载入失败：\n"+err.message);}};r.readAsText(f);e.target.value=""; };
+function download(text,name,mime){ const b=new Blob([text],{type:mime}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000); }
+
+/* IRR */
+const modal=$("modal"),modalBox=$("modalBox");
+function openModal(html){modalBox.innerHTML=html;modal.style.display="flex";}
+function closeModal(){modal.style.display="none";}
+modal.addEventListener("mousedown",e=>{if(e.target===modal)closeModal();});
+$("btnCompare").onclick=()=>{ openModal(`<h3>标注者间一致性 IRR</h3><p class="hint">载入两份不同标注者、同一段数据的独立盲标工程。区间标签按 IoU 阈值匹配，点事件按时间容差匹配。会硬校验两份是否同一段数据。</p><div class="row" style="margin:10px 0;flex-wrap:wrap"><span class="k">区间IoU阈值</span><input type="number" id="irrIou" value="0.5" step="0.05" min="0" max="1" style="width:64px"><span class="k" style="margin-left:12px">点事件容差(ms)</span><input type="number" id="irrTol" value="1000" style="width:76px"><span class="k" style="margin-left:12px">逐帧步长(ms)</span><input type="number" id="irrDt" value="100" style="width:76px"></div><div class="row"><button class="pri" id="irrPick">选择两份工程文件</button><input type="file" id="irrFile" class="filein" accept=".json" multiple><span id="irrNames" class="hint"></span></div><div id="irrOut" style="margin-top:12px"></div><div class="row" style="margin-top:12px;justify-content:flex-end"><button id="irrClose">关闭</button></div>`);
+  $("irrClose").onclick=closeModal;$("irrPick").onclick=()=>$("irrFile").click();
+  $("irrFile").onchange=ev=>{const fs=[...ev.target.files].slice(0,2);if(fs.length<2){alert("请一次选中两份工程文件");return;}Promise.all(fs.map(readJson)).then(([A,B])=>{$("irrNames").textContent=fs.map(f=>f.name).join("  vs  ");runIRR(A,B,fs.map(f=>f.name));}).catch(err=>alert("读取失败："+err.message));}; };
+function readJson(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{try{res(JSON.parse(r.result));}catch(e){rej(e);}};r.onerror=()=>rej(new Error(f.name));r.readAsText(f);});}
+function evList(p){return (p.events||[]).map(e=>{const L=(p.labels||[])[e.li]||{};return {name:L.name||("#"+e.li),type:L.type||"interval",t0:e.t0,t1:e.t1};});}
+function spanOf(e){const b=e.t1==null?e.t0:e.t1;return [Math.min(e.t0,b),Math.max(e.t0,b)];}
+function iouOf(a,b){const s=Math.max(a[0],b[0]),en=Math.min(a[1],b[1]),inter=Math.max(0,en-s),uni=(a[1]-a[0])+(b[1]-b[0])-inter;return uni>0?inter/uni:(inter>0?1:0);}
+function centerEvt(e){return e.t1==null?e.t0:(e.t0+e.t1)/2;}
+function markFrames(arr,evs,dt,n){for(const e of evs){let a,b;if(e.t1==null){a=e.t0-dt/2;b=e.t0+dt/2;}else{a=Math.min(e.t0,e.t1);b=Math.max(e.t0,e.t1);}let i0=Math.max(0,Math.floor(a/dt)),i1=Math.min(n-1,Math.floor(b/dt));for(let i=i0;i<=i1;i++)arr[i]=1;}}
+function runIRR(A,B,names){
+  if(A.source&&B.source&&(A.source.createTime!==B.source.createTime||(A.source.device||"")!==(B.source.device||""))){ $("irrOut").innerHTML='<div class="gbad" style="padding:8px">两份工程不是同一段数据(device 或 create_time 不一致)，已拒绝计算。请确认选的是同一段录制、两位标注者各自的盲标工程。</div>'; return; }
+  const iouThr=Math.max(0,Math.min(1,+$("irrIou").value||0.5)),tol=Math.max(0,+$("irrTol").value||1000),dt=Math.max(10,+$("irrDt").value||100),AE=evList(A),BE=evList(B),all=[...AE,...BE],labels=[...new Set(all.map(e=>e.name))];
+  let T=0;for(const e of all){const s=spanOf(e);T=Math.max(T,s[1]+(e.t1==null?tol:0));}if(S.data)T=Math.max(T,S.data.tspan);const n=Math.max(1,Math.ceil(T/dt));
+  const rows=[];let tTP=0,tFP=0,tFN=0,kSum=0,kCnt=0;
+  for(const name of labels){ const isPt=(all.find(e=>e.name===name)||{}).type==="point"; const Ai=AE.filter(e=>e.name===name),Bi=BE.filter(e=>e.name===name),used=new Array(Bi.length).fill(false);let matched=0;
+    for(const a of Ai){ let best=-1,bestScore=-1;
+      for(let j=0;j<Bi.length;j++){ if(used[j])continue; let ok=false,score=0;
+        if(isPt){ const dc=Math.abs(centerEvt(a)-centerEvt(Bi[j])); if(dc<=tol){ok=true;score=1-dc/(tol+1);} }
+        else { const v=iouOf(spanOf(a),spanOf(Bi[j])); if(v>=iouThr){ok=true;score=v;} }
+        if(ok&&score>bestScore){bestScore=score;best=j;} }
+      if(best>=0){used[best]=true;matched++;} }
+    const TP=matched,FP=Bi.length-matched,FN=Ai.length-matched,P=Bi.length?matched/Bi.length:0,R=Ai.length?matched/Ai.length:0,F1=(P+R)?2*P*R/(P+R):0;tTP+=TP;tFP+=FP;tFN+=FN;
+    let k=null,kStr="-"; if(!isPt){ const ma=new Uint8Array(n),mb=new Uint8Array(n);markFrames(ma,Ai,dt,n);markFrames(mb,Bi,dt,n);let n11=0,n10=0,n01=0,n00=0;for(let i=0;i<n;i++){const x=ma[i],y=mb[i];if(x&&y)n11++;else if(x)n10++;else if(y)n01++;else n00++;} const po=(n11+n00)/n,pa1=(n11+n10)/n,pb1=(n11+n01)/n,pe=pa1*pb1+(1-pa1)*(1-pb1);k=(1-pe)?(po-pe)/(1-pe):1;kSum+=k;kCnt++;kStr=k.toFixed(3);}
+    rows.push({name,isPt,nA:Ai.length,nB:Bi.length,matched,F1,k,kStr}); }
+  const P=tTP+tFP?tTP/(tTP+tFP):0,R=tTP+tFN?tTP/(tTP+tFN):0,microF1=(P+R)?2*P*R/(P+R):0,macroK=kCnt?kSum/kCnt:0;
+  let html=`<div class="hint" style="margin-bottom:6px">${escapeHtml(names[0])} 作参考 vs ${escapeHtml(names[1])} · 区间IoU≥${iouThr} · 点容差 ${tol}ms · 步长 ${dt}ms · 时长 ${(T/60000).toFixed(1)}min</div><table><thead><tr><th>标签</th><th>类型</th><th>A</th><th>B</th><th>匹配</th><th>事件F1</th><th>逐帧κ</th></tr></thead><tbody>`;
+  for(const r of rows)html+=`<tr><td>${escapeHtml(r.name)}</td><td>${r.isPt?"点":"区间"}</td><td class="mono">${r.nA}</td><td class="mono">${r.nB}</td><td class="mono">${r.matched}</td><td class="mono ${r.F1>=.8?"gval":(r.F1<.6?"gbad":"")}">${r.F1.toFixed(3)}</td><td class="mono ${r.k==null?"":(r.k>=.8?"gval":(r.k<.6?"gbad":""))}">${r.kStr}</td></tr>`;
+  html+=`</tbody><tfoot><tr style="font-weight:600"><td>合计</td><td></td><td class="mono">${tTP+tFN}</td><td class="mono">${tTP+tFP}</td><td class="mono">${tTP}</td><td class="mono">micro ${microF1.toFixed(3)}</td><td class="mono">macro ${macroK.toFixed(3)}</td></tr></tfoot></table><div class="row" style="margin-top:10px"><button id="irrCsv">导出这张表 CSV</button></div><div class="hint" style="margin-top:8px">κ>0.8 很好，0.6–0.8 可接受，<0.6 需统一 ethogram 定义再重标。点事件只报事件级匹配，逐帧κ对点无意义故略。密集事件下贪心匹配可能略低估F1。</div>`;
+  $("irrOut").innerHTML=html;
+  $("irrCsv").onclick=()=>{const rr=[["label","type","n_A","n_B","matched","event_F1","frame_kappa"]];for(const r of rows)rr.push([r.name,r.isPt?"point":"interval",r.nA,r.nB,r.matched,r.F1.toFixed(4),r.k==null?"":r.k.toFixed(4)]);rr.push(["__overall__","",tTP+tFN,tTP+tFP,tTP,microF1.toFixed(4),macroK.toFixed(4)]);download("\ufeff"+rr.map(r=>r.map(csvq).join(",")).join("\r\n"),"IRR_report.csv","text/csv");}; }
+
+/* 初始化 */
+renderLabels(); renderEvents(); resizeCanvases(); positionThumb(); updateGTag(); updateViewTag();
+setInterval(autoSave,30000);
+</script>
+</body>
+</html>
